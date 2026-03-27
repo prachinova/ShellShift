@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CMD Converter — Windows ↔ Linux</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#0a0c10;
+  --surface:#111318;
+  --surface2:#181c24;
+  --border:#1e2430;
+  --border2:#2a3240;
+  --accent:#00e5ff;
+  --accent2:#7c3aed;
+  --green:#00ff88;
+  --amber:#ffb800;
+  --red:#ff4757;
+  --text:#e8edf5;
+  --muted:#5a6478;
+  --muted2:#3a4155;
+  --mono:'JetBrains Mono',monospace;
+  --sans:'Syne',sans-serif;
+}
+
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--mono);
+  min-height:100vh;
+  overflow-x:hidden;
+}
+
+/* grid bg */
+body::before{
+  content:'';
+  position:fixed;
+  inset:0;
+  background-image:
+    linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+  background-size:40px 40px;
+  pointer-events:none;
+  z-index:0;
+}
+
+.wrap{position:relative;z-index:1;max-width:900px;margin:0 auto;padding:2rem 1.5rem 4rem;}
+
+/* header */
+header{text-align:center;padding:3rem 0 2.5rem;}
+.logo{
+  font-family:var(--sans);
+  font-size:clamp(2rem,5vw,3.5rem);
+  font-weight:800;
+  letter-spacing:-0.03em;
+  line-height:1;
+  margin-bottom:0.75rem;
+}
+.logo span.win{color:var(--accent);}
+.logo span.arr{color:var(--muted);margin:0 0.2em;}
+.logo span.lin{color:var(--green);}
+.tagline{
+  font-size:13px;
+  color:var(--muted);
+  letter-spacing:0.1em;
+  text-transform:uppercase;
+}
+
+/* mode tabs */
+.tabs{
+  display:flex;
+  gap:6px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:5px;
+  margin-bottom:1.5rem;
+}
+.tab{
+  flex:1;
+  padding:10px 8px;
+  font-family:var(--mono);
+  font-size:13px;
+  font-weight:500;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  background:transparent;
+  color:var(--muted);
+  transition:all 0.2s;
+  white-space:nowrap;
+}
+.tab:hover{color:var(--text);background:var(--surface2);}
+.tab.active{
+  background:var(--surface2);
+  color:var(--text);
+  border:1px solid var(--border2);
+}
+.tab.active.cmd{color:var(--accent);border-color:rgba(0,229,255,0.3);}
+.tab.active.ps{color:#a78bfa;border-color:rgba(124,58,237,0.3);}
+.tab.active.rev{color:var(--green);border-color:rgba(0,255,136,0.3);}
+
+/* main card */
+.card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:16px;
+  overflow:hidden;
+  margin-bottom:1rem;
+}
+
+/* input area */
+.input-area{padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);}
+.input-row{display:flex;align-items:center;gap:10px;}
+.prompt{font-size:18px;font-weight:700;flex-shrink:0;}
+.prompt.cmd{color:var(--accent);}
+.prompt.ps{color:#a78bfa;}
+.prompt.rev{color:var(--green);}
+input#cmd{
+  flex:1;
+  background:transparent;
+  border:none;
+  outline:none;
+  font-family:var(--mono);
+  font-size:16px;
+  color:var(--text);
+  caret-color:var(--accent);
+}
+input#cmd::placeholder{color:var(--muted2);}
+
+/* output area */
+.output-area{padding:1.25rem 1.5rem;min-height:64px;position:relative;}
+.output-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;}
+.output-text{
+  font-family:var(--mono);
+  font-size:16px;
+  color:var(--muted);
+  word-break:break-all;
+  transition:color 0.2s;
+}
+.output-text.found{color:var(--green);}
+.copy-btn{
+  position:absolute;
+  top:1.25rem;
+  right:1.5rem;
+  background:var(--surface2);
+  border:1px solid var(--border2);
+  border-radius:6px;
+  color:var(--muted);
+  font-family:var(--mono);
+  font-size:11px;
+  padding:4px 10px;
+  cursor:pointer;
+  transition:all 0.15s;
+}
+.copy-btn:hover{color:var(--text);border-color:var(--border2);}
+.copy-btn.copied{color:var(--green);border-color:rgba(0,255,136,0.4);}
+
+/* tip */
+.tip-area{
+  padding:1rem 1.5rem;
+  border-top:1px solid var(--border);
+  background:var(--surface2);
+  font-size:13px;
+  color:var(--muted);
+  line-height:1.7;
+  min-height:52px;
+}
+.tip-area code{
+  font-family:var(--mono);
+  font-size:12px;
+  background:rgba(0,229,255,0.08);
+  color:var(--accent);
+  padding:1px 5px;
+  border-radius:4px;
+}
+
+/* chips */
+.section{margin-bottom:1.5rem;}
+.section-title{
+  font-size:11px;
+  color:var(--muted);
+  text-transform:uppercase;
+  letter-spacing:0.1em;
+  margin-bottom:10px;
+}
+.chips{display:flex;flex-wrap:wrap;gap:6px;}
+.chip{
+  font-family:var(--mono);
+  font-size:12px;
+  padding:4px 12px;
+  border-radius:20px;
+  border:1px solid var(--border2);
+  background:var(--surface);
+  color:var(--muted);
+  cursor:pointer;
+  transition:all 0.15s;
+}
+.chip:hover{color:var(--text);border-color:var(--border);background:var(--surface2);}
+.chip.active{color:var(--accent);border-color:rgba(0,229,255,0.4);background:rgba(0,229,255,0.06);}
+
+/* suggestions */
+.sugg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;}
+.sugg-card{
+  padding:10px 14px;
+  border-radius:10px;
+  border:1px solid var(--border);
+  background:var(--surface);
+  font-size:12px;
+  font-family:var(--mono);
+  color:var(--muted);
+  cursor:pointer;
+  transition:all 0.15s;
+  line-height:1.5;
+}
+.sugg-card:hover{
+  color:var(--text);
+  border-color:var(--border2);
+  background:var(--surface2);
+}
+
+/* badges */
+.badges{display:flex;gap:8px;align-items:center;margin-bottom:1.25rem;}
+.badge{
+  font-size:11px;
+  font-weight:500;
+  padding:3px 10px;
+  border-radius:20px;
+  font-family:var(--mono);
+}
+.badge.win{background:rgba(0,229,255,0.1);color:var(--accent);border:1px solid rgba(0,229,255,0.25);}
+.badge.ps-b{background:rgba(124,58,237,0.15);color:#a78bfa;border:1px solid rgba(124,58,237,0.3);}
+.badge.lin{background:rgba(0,255,136,0.08);color:var(--green);border:1px solid rgba(0,255,136,0.2);}
+.badge.arr{background:none;color:var(--muted);border:none;font-size:16px;padding:0;}
+
+/* no-match */
+.ask-btn{
+  margin-top:10px;
+  font-family:var(--mono);
+  font-size:13px;
+  padding:8px 18px;
+  border:1px solid var(--border2);
+  border-radius:8px;
+  background:transparent;
+  color:var(--text);
+  cursor:pointer;
+  transition:all 0.15s;
+}
+.ask-btn:hover{background:var(--surface2);border-color:var(--accent);color:var(--accent);}
+
+/* footer */
+footer{text-align:center;padding:2rem 0 0;font-size:12px;color:var(--muted2);}
+
+/* scrollbar */
+::-webkit-scrollbar{width:6px;}
+::-webkit-scrollbar-track{background:var(--surface);}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+
+@media(max-width:600px){
+  .tab{font-size:11px;padding:8px 4px;}
+  .logo{font-size:2rem;}
+  .sugg-grid{grid-template-columns:1fr 1fr;}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="logo">
+    <span class="win">CMD</span><span class="arr">⇄</span><span class="lin">bash</span>
+  </div>
+  <p class="tagline">Windows · PowerShell · Linux command converter</p>
+</header>
+
+<div class="tabs">
+  <button class="tab active cmd" id="tab-cmd" onclick="setMode('cmd')">CMD → Linux</button>
+  <button class="tab ps" id="tab-ps" onclick="setMode('ps')">PowerShell → Bash</button>
+  <button class="tab rev" id="tab-rev" onclick="setMode('rev')">Linux → Windows</button>
+</div>
+
+<div class="badges" id="badges">
+  <span class="badge win">Windows CMD</span>
+  <span class="badge arr">→</span>
+  <span class="badge lin">Linux / Bash</span>
+</div>
+
+<div class="card">
+  <div class="input-area">
+    <div class="input-row">
+      <span class="prompt cmd" id="prompt">$</span>
+      <input id="cmd" type="text" placeholder="type a command..." autocomplete="off" autocorrect="off" spellcheck="false" oninput="convert(this.value)"/>
+    </div>
+  </div>
+  <div class="output-area">
+    <div class="output-label" id="out-label">Linux equivalent</div>
+    <div class="output-text" id="output">Start typing above...</div>
+    <button class="copy-btn" id="copy-btn" onclick="copyResult()">copy</button>
+  </div>
+  <div class="tip-area" id="tip">Type any command to see tips and notes.</div>
+</div>
+
+<div class="section">
+  <div class="section-title">Quick examples</div>
+  <div class="chips" id="chips"></div>
+</div>
+
+<div class="section" id="sugg-section" style="display:none">
+  <div class="section-title">Related suggestions</div>
+  <div class="sugg-grid" id="suggestions"></div>
+</div>
+
+<footer>
+  100+ commands · CMD · PowerShell · Bash · Built with Claude
+</footer>
+
+</div>
+
+<script>
+const cmdDb=[
+  {win:"dir",lin:"ls -la",tip:"<code>ls</code> lists files. Use <code>-l</code> for details, <code>-a</code> to show hidden dotfiles. <code>ls -lh</code> shows human-readable sizes.",sugg:["ls -lt (sort by time)","ls -lS (sort by size)","find . -name '*.txt'","tree -L 2"]},
+  {win:"dir /s",lin:"ls -laR",tip:"The <code>-R</code> flag makes ls recursive. For large trees, <code>find .</code> or <code>tree</code> are better.",sugg:["find . -type f","du -sh *","ls -laR | less","find . -maxdepth 2"]},
+  {win:"dir /b",lin:"ls",tip:"Bare listing — just filenames, no extra details.",sugg:["ls -1 (one per line)","ls *.txt","ls -d */ (dirs only)","ls | wc -l (count)"]},
+  {win:"dir /a",lin:"ls -la",tip:"<code>-a</code> shows hidden files (those starting with a dot on Linux).",sugg:["ls -la","ls -lA (no . and ..)","find . -name '.*'","ls -d .*"]},
+  {win:"cd",lin:"cd",tip:"<code>cd</code> works the same! <code>cd ~</code> goes home, <code>cd -</code> goes to previous dir, <code>cd ..</code> goes up one level.",sugg:["cd ~","cd -","pushd /path","popd"]},
+  {win:"mkdir",lin:"mkdir",tip:"<code>mkdir</code> works the same! Use <code>mkdir -p</code> to create nested dirs: <code>mkdir -p a/b/c</code>",sugg:["mkdir -p a/b/c","mkdir -m 755 dir","mktemp -d","install -d dir"]},
+  {win:"copy",lin:"cp",tip:"<code>cp source dest</code>. Use <code>-r</code> for directories, <code>-p</code> to preserve timestamps and permissions.",sugg:["cp -r src/ dst/","cp -p file dest","rsync -av src dst","scp file user@host:"]},
+  {win:"xcopy",lin:"rsync -av",tip:"<code>rsync</code> is much more powerful. <code>-a</code> preserves permissions, <code>-v</code> shows progress. Add <code>--progress</code> for live stats.",sugg:["rsync -avz (compress)","rsync --progress","rsync -n (dry run)","rsync --delete"]},
+  {win:"move",lin:"mv",tip:"<code>mv</code> moves and renames files. <code>mv oldname newname</code> renames in place.",sugg:["mv -i (prompt before overwrite)","rename 's/old/new/' *","mmv '*.txt' '*.bak'","mv -v (verbose)"]},
+  {win:"del",lin:"rm",tip:"<code>rm</code> deletes files permanently — no trash! Use <code>-i</code> for interactive prompts. <code>rm -r</code> for directories.",sugg:["rm -ri dir/","rm -f file","find . -name '*.log' -delete","trash-put (safer)"]},
+  {win:"rmdir",lin:"rmdir / rm -r",tip:"<code>rmdir</code> removes empty dirs only. <code>rm -r</code> removes non-empty. Always double check before <code>rm -rf</code>!",sugg:["rm -ri mydir","find . -empty -type d -delete","rm -rf dist/ (careful!)","ls before deleting"]},
+  {win:"ren",lin:"mv",tip:"<code>mv</code> handles renames. For bulk renames use the <code>rename</code> command.",sugg:["rename 's/.txt/.md/' *.txt","mmv '*.txt' '*.bak'","for f in *.txt; do mv","prename"]},
+  {win:"type",lin:"cat",tip:"<code>cat</code> prints file contents. For large files use <code>less</code> for pagination. <code>head</code> / <code>tail</code> show start/end.",sugg:["less file.txt","head -n 20 file","tail -f log.txt","cat f1 f2 > merged"]},
+  {win:"more",lin:"less",tip:"<code>less</code> is better — navigate with arrows/space/b, search with <code>/pattern</code>, quit with <code>q</code>.",sugg:["less +F file.log","less -N (line numbers)","more file.txt","most (coloured pager)"]},
+  {win:"echo",lin:"echo",tip:"<code>echo</code> works the same! <code>echo -e</code> enables escape sequences. Use <code>printf</code> for more control.",sugg:["echo $HOME","echo -e 'a\\nb'","printf 'Hello %s\\n' name","echo text >> file"]},
+  {win:"cls",lin:"clear",tip:"<code>clear</code> clears the terminal. Shortcut: <code>Ctrl+L</code>. <code>reset</code> does a full terminal reset.",sugg:["Ctrl+L (shortcut)","reset","tput clear","printf '\\033c'"]},
+  {win:"find",lin:"find",tip:"Linux <code>find</code> is very powerful. <code>find . -name '*.txt'</code> searches by name. <code>-type f</code> for files only.",sugg:["find . -name '*.log'","find . -mtime -7","find . -size +10M","locate filename"]},
+  {win:"fc",lin:"diff",tip:"<code>diff file1 file2</code> shows differences. <code>-u</code> for unified format. <code>vimdiff</code> or <code>meld</code> for visual diff.",sugg:["diff -u f1 f2","vimdiff f1 f2","meld f1 f2 (GUI)","diff -rq dir1 dir2"]},
+  {win:"sort",lin:"sort",tip:"<code>sort</code> works similarly. <code>-n</code> numeric, <code>-r</code> reverse, <code>-u</code> remove duplicates, <code>-k2</code> sort by column.",sugg:["sort -n nums.txt","sort -r file","sort -u (unique)","sort -k2 (col 2)"]},
+  {win:"ipconfig",lin:"ip addr",tip:"<code>ip addr show</code> lists all network interfaces and IPs. Modern replacement for <code>ifconfig</code>.",sugg:["ip addr show","ip link show","nmcli device","hostname -I"]},
+  {win:"ipconfig /all",lin:"ip addr show",tip:"Combine <code>ip addr show</code> && <code>ip route show</code> for full detail. <code>nmcli</code> gives NetworkManager info.",sugg:["nmcli device show","cat /etc/resolv.conf","hostnamectl","resolvectl status"]},
+  {win:"ipconfig /flushdns",lin:"sudo systemd-resolve --flush-caches",tip:"Flushes the DNS resolver cache. Also try: <code>sudo resolvectl flush-caches</code>",sugg:["resolvectl statistics","systemctl restart systemd-resolved","cat /etc/resolv.conf","nslookup domain"]},
+  {win:"ping",lin:"ping -c 4",tip:"Linux <code>ping</code> runs forever — use <code>-c N</code> to limit packets. <code>mtr</code> combines ping + traceroute.",sugg:["ping -c 4 google.com","mtr google.com","traceroute host","curl -I https://site"]},
+  {win:"tracert",lin:"traceroute",tip:"<code>traceroute</code> shows the route to a host. <code>mtr</code> is an improved interactive version.",sugg:["traceroute google.com","mtr --report host","tracepath host","ping -c 4 host"]},
+  {win:"netstat",lin:"ss -tuln",tip:"<code>ss</code> is the modern replacement. <code>-t</code> TCP, <code>-u</code> UDP, <code>-l</code> listening, <code>-n</code> numeric ports.",sugg:["ss -tulnp","ss -s (summary)","lsof -i :80","netstat -tuln (legacy)"]},
+  {win:"nslookup",lin:"nslookup / dig",tip:"<code>dig</code> is more powerful. <code>dig google.com</code> shows full DNS info. <code>dig +short</code> for quick answer.",sugg:["dig google.com","dig +short google.com","host google.com","resolvectl query"]},
+  {win:"tasklist",lin:"ps aux",tip:"<code>ps aux</code> lists all processes. Pipe to grep: <code>ps aux | grep nginx</code>. Use <code>top</code> or <code>htop</code> for live view.",sugg:["htop","top","pgrep nginx","ps -ef | grep python"]},
+  {win:"taskkill",lin:"kill / pkill",tip:"<code>kill PID</code> sends a signal. <code>pkill name</code> kills by name. <code>kill -9</code> is a force kill.",sugg:["pkill -f myapp","kill -9 PID","killall node","kill $(pgrep python)"]},
+  {win:"taskkill /f",lin:"kill -9",tip:"<code>kill -9</code> (SIGKILL) forcefully terminates a process. Use as a last resort.",sugg:["pkill -9 name","killall -9 app","kill -SIGKILL PID","ps aux then kill"]},
+  {win:"set",lin:"env / export",tip:"<code>env</code> lists all variables. <code>export VAR=value</code> sets one. <code>printenv VAR</code> prints a specific variable.",sugg:["printenv PATH","export MY_VAR=hi","env | grep HOME","declare -p"]},
+  {win:"path",lin:"echo $PATH",tip:"<code>$PATH</code> holds the list of directories searched for commands. <code>export PATH=$PATH:/new/dir</code> to extend it.",sugg:["echo $PATH","export PATH=$PATH:/opt/bin","which python3","command -v git"]},
+  {win:"attrib",lin:"chmod / chown",tip:"<code>chmod</code> changes permissions (<code>chmod 755 file</code> or <code>chmod +x script.sh</code>). <code>chown</code> changes owner.",sugg:["chmod +x script.sh","chmod 644 file","chown user:group file","stat file"]},
+  {win:"whoami",lin:"whoami",tip:"<code>whoami</code> works the same! <code>id</code> shows more detail including groups. <code>who</code> shows logged-in users.",sugg:["id","who","w","last (login history)"]},
+  {win:"hostname",lin:"hostname",tip:"<code>hostname</code> works the same! <code>hostnamectl</code> shows more detail and lets you set the hostname.",sugg:["hostnamectl","hostname -I (IPs)","cat /etc/hostname","hostnamectl set-hostname x"]},
+  {win:"systeminfo",lin:"uname -a",tip:"<code>uname -a</code> shows kernel info. <code>lscpu</code> for CPU. <code>lsb_release -a</code> for distro. <code>neofetch</code> is prettiest!",sugg:["lsb_release -a","cat /etc/os-release","lscpu","neofetch"]},
+  {win:"shutdown",lin:"shutdown -h now",tip:"<code>shutdown -h now</code> halts. <code>shutdown -r now</code> reboots. <code>shutdown -h +10</code> schedules in 10 min.",sugg:["shutdown -r now","reboot","shutdown -h +5","poweroff"]},
+  {win:"shutdown /r",lin:"reboot",tip:"<code>reboot</code> or <code>shutdown -r now</code> both work. <code>shutdown -r +5</code> schedules a reboot in 5 minutes.",sugg:["shutdown -r now","systemctl reboot","init 6","shutdown -r +5"]},
+  {win:"where",lin:"which",tip:"<code>which</code> shows the path of a command. <code>whereis</code> shows binary + man pages. <code>type cmd</code> also works.",sugg:["which python3","whereis ls","type bash","command -v git"]},
+  {win:"tree",lin:"tree",tip:"<code>tree</code> works the same if installed (<code>sudo apt install tree</code>). Use <code>-L 2</code> to limit depth.",sugg:["tree -L 2","tree -d (dirs only)","find . | head -30","ls -R | grep ':$'"]},
+  {win:"sc",lin:"systemctl",tip:"<code>systemctl</code> manages services. <code>start/stop/restart/status/enable/disable</code> are the key subcommands.",sugg:["systemctl status nginx","systemctl start svc","systemctl enable svc","journalctl -u svc"]},
+  {win:"net user",lin:"cat /etc/passwd",tip:"Lists user accounts. <code>getent passwd</code> is more portable. <code>id username</code> shows details for one user.",sugg:["getent passwd","id username","cat /etc/shadow","adduser newuser"]},
+  {win:"eventvwr",lin:"journalctl",tip:"<code>journalctl</code> is systemd's log viewer. <code>-b</code> for current boot, <code>-f</code> to follow live, <code>-u</code> for a specific service.",sugg:["journalctl -b","journalctl -f","journalctl -u nginx","journalctl --since today"]},
+  {win:"taskmgr",lin:"htop",tip:"<code>htop</code> is the go-to interactive process viewer. Install: <code>sudo apt install htop</code>. <code>btop</code> is even prettier.",sugg:["htop","btop","top","ps aux | sort -k3 -r | head"]},
+  {win:"notepad",lin:"nano / vim",tip:"<code>nano</code> is beginner-friendly. <code>vim</code> is powerful. <code>gedit/kate</code> are GUI text editors.",sugg:["nano file.txt","vim file.txt","gedit file.txt","micro file.txt"]},
+  {win:"calc",lin:"bc / python3",tip:"<code>bc</code> is a command-line calculator. <code>python3</code> is even better for quick math.",sugg:["python3 -c 'print(2**10)'","bc -l","expr 5 + 3","gnome-calculator"]},
+  {win:"format",lin:"mkfs",tip:"<code>mkfs</code> formats a partition. e.g. <code>mkfs.ext4 /dev/sdb1</code>. Always double-check the device!",sugg:["mkfs.ext4 /dev/sdb1","mkfs.vfat /dev/sdb1","lsblk (list disks)","fdisk /dev/sdb"]},
+  {win:"chkdsk",lin:"fsck",tip:"<code>fsck</code> checks disk integrity. Run on unmounted filesystems with <code>sudo</code>.",sugg:["sudo fsck /dev/sda","df -h (disk usage)","lsblk","mount | grep sda"]},
+];
+
+const psDb=[
+  {win:"Get-ChildItem",lin:"ls -la",tip:"<code>ls -la</code> is the closest equivalent. Use <code>-R</code> for recursive listing.",sugg:["ls -la","find . -type f","tree -L 2","du -sh *"]},
+  {win:"Get-ChildItem -Recurse",lin:"find . / ls -laR",tip:"<code>find .</code> is more powerful for recursive searches with filters.",sugg:["find . -name '*.txt'","find . -type f -mtime -7","ls -laR","tree"]},
+  {win:"Set-Location",lin:"cd",tip:"<code>cd</code> works identically. <code>cd -</code> goes back, <code>cd ~</code> goes home.",sugg:["cd -","cd ~","pushd /path","popd"]},
+  {win:"Get-Location",lin:"pwd",tip:"<code>pwd</code> prints the current working directory. <code>$PWD</code> variable also works.",sugg:["pwd","echo $PWD","dirs","readlink -f ."]},
+  {win:"Copy-Item",lin:"cp",tip:"<code>cp source dest</code>. Use <code>-r</code> for directories, <code>-p</code> to preserve attributes.",sugg:["cp -r src/ dst/","rsync -av src dst","cp -p file dest","scp file host:"]},
+  {win:"Move-Item",lin:"mv",tip:"<code>mv</code> handles both moving and renaming files.",sugg:["mv -i (prompt)","rename 's/old/new/' *","mv -v (verbose)","mmv '*.txt' '*.bak'"]},
+  {win:"Remove-Item",lin:"rm",tip:"<code>rm -r</code> for directories. <code>rm -i</code> for interactive. Be careful — no trash on Linux by default!",sugg:["rm -ri dir/","trash-put (safer)","find . -name '*.log' -delete","rm -f file"]},
+  {win:"New-Item",lin:"touch / mkdir",tip:"<code>touch</code> creates empty files. <code>mkdir</code> creates directories. <code>mkdir -p</code> for nested dirs.",sugg:["touch newfile.txt","mkdir -p a/b/c","install -d dir","mktemp"]},
+  {win:"Get-Content",lin:"cat",tip:"<code>cat</code> prints file content. <code>less</code> for paging, <code>head</code>/<code>tail</code> for start/end.",sugg:["less file.txt","head -n 20 file","tail -f log.txt","cat f1 f2 > merged"]},
+  {win:"Get-Process",lin:"ps aux",tip:"<code>ps aux</code> lists all processes. Use <code>ps aux | grep name</code> to filter.",sugg:["htop","ps -ef","pgrep name","ps aux | grep python"]},
+  {win:"Stop-Process",lin:"kill / pkill",tip:"<code>kill PID</code> or <code>pkill name</code>. <code>kill -9</code> for force kill. <code>killall</code> kills by name.",sugg:["pkill -f name","kill -9 PID","killall node","kill $(pgrep app)"]},
+  {win:"Start-Process",lin:"command &",tip:"Append <code>&</code> to run a command in the background. <code>nohup</code> keeps it running after logout.",sugg:["nohup ./app &","screen -S name","tmux new -s name","./app & disown"]},
+  {win:"Get-Service",lin:"systemctl list-units",tip:"<code>systemctl</code> lists all services. <code>--type=service</code> for just services.",sugg:["systemctl list-units --type=service","service --status-all","systemctl status nginx","journalctl -u svc"]},
+  {win:"Start-Service",lin:"systemctl start",tip:"<code>sudo systemctl start servicename</code>. Use <code>enable</code> to make it start at boot.",sugg:["sudo systemctl start nginx","sudo service nginx start","systemctl enable nginx","systemctl status nginx"]},
+  {win:"Stop-Service",lin:"systemctl stop",tip:"<code>sudo systemctl stop servicename</code>. <code>disable</code> prevents it from starting at boot.",sugg:["sudo systemctl stop nginx","sudo service nginx stop","systemctl disable nginx","systemctl status nginx"]},
+  {win:"Restart-Service",lin:"systemctl restart",tip:"<code>restart</code> applies new config. <code>reload</code> (if supported) is less disruptive.",sugg:["sudo systemctl restart nginx","sudo systemctl reload nginx","systemctl status nginx","journalctl -u nginx -f"]},
+  {win:"Write-Host",lin:"echo",tip:"<code>echo</code> prints to stdout. Use <code>printf</code> for more formatting control.",sugg:["echo 'hello'","printf 'Hello %s\\n' world","echo -e 'a\\nb'","cat << EOF"]},
+  {win:"Read-Host",lin:"read",tip:"<code>read VAR</code> reads input. <code>read -p 'Prompt: ' VAR</code> shows a prompt. <code>read -s</code> hides input.",sugg:["read -p 'Enter: ' VAR","read -s PASSWORD","read -t 10 VAR (timeout)","select opt in a b c"]},
+  {win:"Select-String",lin:"grep",tip:"<code>grep</code> is very powerful. <code>-i</code> case-insensitive, <code>-r</code> recursive, <code>-n</code> show line numbers.",sugg:["grep -ri 'error' .","grep -n 'pattern' file","grep -v 'exclude'","grep -E 'regex' file"]},
+  {win:"Where-Object",lin:"grep / awk",tip:"<code>grep</code> filters lines. <code>awk</code> can filter by field values: <code>awk '$3 > 100' file</code>",sugg:["grep 'pattern'","awk '$2 == \"value\"'","awk 'NR>1 && $3>100'","sed -n '/start/,/end/p'"]},
+  {win:"Sort-Object",lin:"sort",tip:"<code>sort -n</code> for numeric, <code>-r</code> reverse, <code>-k2</code> by field 2, <code>-u</code> unique.",sugg:["sort -n file","sort -k2 -r","sort -u (dedup)","sort | uniq -c | sort -rn"]},
+  {win:"Measure-Object",lin:"wc",tip:"<code>wc -l</code> counts lines, <code>wc -w</code> words, <code>wc -c</code> bytes.",sugg:["wc -l file","wc -w file","wc -c file","cat file | wc -l"]},
+  {win:"Invoke-WebRequest",lin:"curl",tip:"<code>curl</code> is the standard. <code>curl -O</code> downloads a file. <code>curl -s</code> for silent output.",sugg:["curl -O https://url","wget https://url","curl -s -L url","curl -I url (headers)"]},
+  {win:"Invoke-RestMethod",lin:"curl -s | jq",tip:"<code>curl</code> fetches the data, <code>jq</code> parses JSON. Install jq: <code>sudo apt install jq</code>",sugg:["curl -s url | jq .","curl -X POST -d '{}'","httpie (friendlier)","wget -qO- url | python3 -m json.tool"]},
+  {win:"Test-Path",lin:"test -e / [ -e ]",tip:"<code>test -e file</code> returns true if file exists. <code>-d</code> for directory, <code>-f</code> for regular file.",sugg:["[ -f file ] && echo yes","[ -d dir ] || mkdir dir","test -e file && rm it","if [ -f file ]; then"]},
+  {win:"Split-Path",lin:"dirname / basename",tip:"<code>dirname</code> gives the directory part, <code>basename</code> gives the filename part of a path.",sugg:["dirname /path/to/file","basename /path/to/file","realpath file","readlink -f file"]},
+  {win:"Compress-Archive",lin:"tar -czf",tip:"<code>tar -czf archive.tar.gz dir</code> compresses. <code>tar -xzf archive.tar.gz</code> extracts.",sugg:["tar -czf out.tar.gz dir/","zip -r out.zip dir/","tar -xzf file.tar.gz","gzip file"]},
+  {win:"Expand-Archive",lin:"tar -xzf / unzip",tip:"<code>tar -xzf</code> for .tar.gz, <code>unzip</code> for .zip. Add <code>-v</code> to see extracted files.",sugg:["tar -xzf file.tar.gz","unzip file.zip","tar -xjf file.tar.bz2","7z x file.7z"]},
+  {win:"Get-Date",lin:"date",tip:"<code>date</code> shows current date/time. <code>date '+%Y-%m-%d'</code> for custom format. <code>date -u</code> for UTC.",sugg:["date '+%Y-%m-%d'","date -u","date +%s (unix timestamp)","timedatectl"]},
+  {win:"Get-Help",lin:"man",tip:"<code>man command</code> shows the manual. <code>command --help</code> for quick help. <code>tldr</code> for simplified examples.",sugg:["man ls","ls --help","tldr ls","info ls"]},
+  {win:"ConvertTo-Json",lin:"python3 -m json.tool / jq",tip:"<code>jq</code> is the best JSON tool on Linux. <code>python3 -m json.tool</code> pretty-prints JSON.",sugg:["echo '{\"a\":1}' | jq .","python3 -m json.tool file.json","cat data | jq '.key'","yq for YAML"]},
+  {win:"Out-File",lin:"redirect > / tee",tip:"<code>></code> redirects output to a file. <code>>></code> appends. <code>tee</code> writes to file and stdout.",sugg:["cmd > file.txt","cmd >> file.txt","cmd | tee file.txt","cmd 2>&1 | tee log"]},
+  {win:"Export-Csv",lin:"awk / csvkit",tip:"<code>awk</code> can format data as CSV. <code>csvkit</code> provides csv-specific tools.",sugg:["awk -F'\\t' '{print}' file","csvkit tools","python3 csv module","ssconvert (gnumeric)"]},
+  {win:"Clear-Host",lin:"clear",tip:"<code>clear</code> clears the terminal. <code>Ctrl+L</code> is the shortcut. <code>reset</code> does a full reset.",sugg:["Ctrl+L","reset","tput clear","printf '\\033c'"]},
+];
+
+const revDb=[
+  {lin:"ls",win:"dir",tip:"<code>dir</code> lists files in CMD. <code>dir /a</code> shows hidden files. <code>dir /s</code> is recursive.",sugg:["dir /s (recursive)","dir /b (bare)","dir /a (all files)","dir /o:d (by date)"]},
+  {lin:"ls -la",win:"dir /a",tip:"<code>dir /a</code> shows hidden files. For details, <code>dir</code> alone shows size/date.",sugg:["dir /a","dir /s /b","Get-ChildItem (PS)","attrib file"]},
+  {lin:"cd",win:"cd",tip:"<code>cd</code> works in CMD. <code>cd %USERPROFILE%</code> goes to home. <code>cd ..</code> goes up.",sugg:["cd %USERPROFILE%","cd ..","cd /d D:\\path","pushd / popd"]},
+  {lin:"pwd",win:"cd (no args)",tip:"<code>cd</code> with no arguments prints the current directory in CMD. Or use <code>echo %CD%</code>.",sugg:["cd (no args)","echo %CD%","$PWD in PowerShell","Get-Location (PS)"]},
+  {lin:"cp",win:"copy / xcopy",tip:"<code>copy</code> for files, <code>xcopy</code> for directories. <code>robocopy</code> is the most powerful option.",sugg:["copy src dst","xcopy src dst /e","robocopy src dst /e","Copy-Item (PS)"]},
+  {lin:"mv",win:"move / ren",tip:"<code>move</code> moves files, <code>ren</code> renames them.",sugg:["move file dst","ren oldname newname","robocopy (advanced)","Move-Item (PS)"]},
+  {lin:"rm",win:"del / rmdir",tip:"<code>del</code> deletes files. <code>rmdir /s /q</code> deletes directories recursively.",sugg:["del file.txt","rmdir /s /q dir","del /f /q file","Remove-Item (PS)"]},
+  {lin:"mkdir",win:"mkdir / md",tip:"<code>mkdir</code> and <code>md</code> both work in CMD. <code>mkdir a\\b\\c</code> creates nested dirs.",sugg:["mkdir newdir","md a\\b\\c","New-Item -Type Directory (PS)","mkdir -Force (PS)"]},
+  {lin:"cat",win:"type",tip:"<code>type</code> prints file contents in CMD. <code>more</code> pages through a file.",sugg:["type file.txt","more file.txt","Get-Content (PS)","notepad file.txt"]},
+  {lin:"echo",win:"echo",tip:"<code>echo</code> works the same! <code>echo %VAR%</code> for variables. <code>echo.</code> prints a blank line.",sugg:["echo %VAR%","echo.","echo text >> file","Write-Host (PS)"]},
+  {lin:"clear",win:"cls",tip:"<code>cls</code> clears the CMD screen. In PowerShell use <code>Clear-Host</code>.",sugg:["cls","Clear-Host (PS)","prompt $p$g (reset)","mode con"]},
+  {lin:"grep",win:"findstr",tip:"<code>findstr</code> searches text in files. <code>/r</code> for regex, <code>/i</code> for case-insensitive.",sugg:["findstr 'error' file.log","findstr /i /r 'pat' *.txt","Select-String (PS)","findstr /s (recursive)"]},
+  {lin:"find",win:"dir /s /b",tip:"<code>dir /s /b</code> recursively lists all files. <code>where</code> finds executables.",sugg:["dir /s /b *.txt","where python","Get-ChildItem -Recurse (PS)","forfiles /p . /m *.log"]},
+  {lin:"ps aux",win:"tasklist",tip:"<code>tasklist</code> lists all running processes. Use <code>/fi</code> for filtering.",sugg:["tasklist","tasklist /fi 'imagename eq chrome.exe'","Get-Process (PS)","wmic process list"]},
+  {lin:"kill",win:"taskkill",tip:"<code>taskkill /pid 1234</code> kills by PID. <code>/f</code> forces. <code>/im name.exe</code> kills by name.",sugg:["taskkill /pid 1234","taskkill /f /im chrome.exe","Stop-Process (PS)","wmic process delete"]},
+  {lin:"ip addr",win:"ipconfig",tip:"<code>ipconfig</code> shows IP config. <code>ipconfig /all</code> shows full details including MAC addresses.",sugg:["ipconfig","ipconfig /all","ipconfig /flushdns","Get-NetIPAddress (PS)"]},
+  {lin:"ping",win:"ping",tip:"<code>ping</code> works the same! <code>ping -n 4</code> sends 4 packets (Linux uses <code>-c 4</code>).",sugg:["ping -n 4 google.com","ping -t host (forever)","pathping host","tracert host"]},
+  {lin:"traceroute",win:"tracert",tip:"<code>tracert</code> is the Windows equivalent of <code>traceroute</code>.",sugg:["tracert google.com","pathping host","Test-NetConnection (PS)","ping -n 4 host"]},
+  {lin:"ss",win:"netstat",tip:"<code>netstat -ano</code> shows all connections with PIDs. <code>netstat -b</code> shows which program owns each port.",sugg:["netstat -ano","netstat -b","Get-NetTCPConnection (PS)","TCPView (Sysinternals)"]},
+  {lin:"df",win:"wmic logicaldisk",tip:"<code>wmic logicaldisk get size,freespace,caption</code> shows disk usage.",sugg:["wmic logicaldisk get size,freespace","dir (shows free space)","Get-PSDrive (PS)","fsutil volume diskfree C:"]},
+  {lin:"chmod",win:"icacls",tip:"<code>icacls</code> sets file permissions. <code>icacls file /grant user:F</code> grants full control.",sugg:["icacls file /grant user:F","icacls file /deny user:R","attrib +r file (read-only)","Set-Acl (PS)"]},
+  {lin:"chown",win:"icacls / takeown",tip:"<code>takeown /f file</code> takes ownership. <code>icacls</code> then sets permissions.",sugg:["takeown /f file","icacls file /grant user:F","Get-Acl / Set-Acl (PS)","cacls (legacy)"]},
+  {lin:"tar",win:"tar / Compress-Archive",tip:"Windows 10+ includes <code>tar</code>. PowerShell's <code>Compress-Archive</code> handles zip files.",sugg:["tar -czf out.tar.gz dir","Compress-Archive (PS)","7z a archive.zip dir","winzip/7-zip (GUI)"]},
+  {lin:"ssh",win:"ssh",tip:"Windows 10+ includes OpenSSH. <code>ssh user@host</code> works the same.",sugg:["ssh user@host","ssh -i key.pem user@host","PuTTY (GUI)","New-SshKey (PS module)"]},
+  {lin:"curl",win:"curl / Invoke-WebRequest",tip:"Windows 10+ includes <code>curl</code>. PowerShell's <code>Invoke-WebRequest</code> is the native option.",sugg:["curl https://url","Invoke-WebRequest url (PS)","wget (if installed)","iwr -Uri url (PS)"]},
+  {lin:"wget",win:"Invoke-WebRequest",tip:"PowerShell's <code>Invoke-WebRequest</code> or <code>Invoke-RestMethod</code> download files.",sugg:["Invoke-WebRequest url -OutFile f (PS)","curl -O url","Start-BitsTransfer (PS)","certutil -urlcache -f url file"]},
+  {lin:"top",win:"taskmgr",tip:"Task Manager (<code>taskmgr</code>) is the GUI equivalent. <code>typeperf</code> gives performance counters.",sugg:["taskmgr","Get-Process | Sort CPU (PS)","perfmon","wmic cpu get loadpercentage"]},
+  {lin:"htop",win:"taskmgr",tip:"Task Manager's Performance tab shows live CPU/memory. Process Monitor from Sysinternals is more detailed.",sugg:["taskmgr","resmon (Resource Monitor)","perfmon","Process Monitor (Sysinternals)"]},
+  {lin:"man",win:"help / /?",tip:"<code>command /?</code> or <code>help command</code> shows help. <code>Get-Help</code> in PowerShell.",sugg:["command /?","help dir","Get-Help (PS)","MSDN docs online"]},
+  {lin:"which",win:"where",tip:"<code>where command</code> shows the full path of an executable. Works in CMD and PowerShell.",sugg:["where python","where git","Get-Command (PS)","(Get-Command git).Path (PS)"]},
+  {lin:"env",win:"set",tip:"<code>set</code> with no args lists all environment variables. <code>echo %VAR%</code> prints a specific one.",sugg:["set","echo %PATH%","[Environment]::GetEnvironmentVariables() (PS)","setx VAR value (permanent)"]},
+  {lin:"export",win:"set / setx",tip:"<code>set VAR=value</code> sets for current session. <code>setx VAR value</code> makes it permanent.",sugg:["set MY_VAR=hello","setx MY_VAR hello","[Environment]::SetEnvironmentVariable (PS)","System Properties > Environment"]},
+  {lin:"diff",win:"fc",tip:"<code>fc file1 file2</code> compares text files. <code>fc /b</code> for binary comparison.",sugg:["fc file1 file2","fc /b bin1 bin2","Compare-Object (PS)","windiff (GUI, legacy)"]},
+  {lin:"sort",win:"sort",tip:"<code>sort</code> works in CMD. For advanced sorting, PowerShell's <code>Sort-Object</code> is more powerful.",sugg:["sort file.txt","sort /r (reverse)","Sort-Object (PS)","findstr then sort"]},
+  {lin:"wc",win:"find /c",tip:"<code>find /c /v '' file</code> counts lines. For word count, use a PowerShell one-liner.",sugg:["find /c /v '' file","(Get-Content file).Count (PS)","Measure-Object -Line (PS)","type file | find /c /v ''"]},
+  {lin:"sed",win:"no direct equivalent",tip:"PowerShell's <code>-replace</code> is the closest. For full sed power, install Git Bash or WSL.",sugg:["(Get-Content f) -replace 'old','new' | Set-Content f","WSL sed (install WSL)","Git Bash sed","GNUWIN32 tools"]},
+  {lin:"awk",win:"no direct equivalent",tip:"No native equivalent. Use PowerShell, WSL, or install GNU tools for Windows.",sugg:["WSL awk (install WSL)","Git Bash awk","Select-String + ForEach (PS)","GNUWIN32 tools"]},
+  {lin:"cron",win:"Task Scheduler",tip:"Use Windows Task Scheduler (<code>taskschd.msc</code>) to schedule tasks. <code>schtasks</code> is the CLI.",sugg:["taskschd.msc (GUI)","schtasks /create ...","Register-ScheduledTask (PS)","at command (legacy)"]},
+  {lin:"sudo",win:"runas",tip:"<code>runas /user:Administrator cmd</code> runs a command as admin. Right-click > Run as administrator is easier.",sugg:["runas /user:Administrator cmd","Start-Process -Verb RunAs (PS)","Right-click Run as admin","UAC elevation prompt"]},
+  {lin:"apt",win:"winget / choco",tip:"<code>winget</code> is the built-in package manager in Windows 10+. Chocolatey is a popular alternative.",sugg:["winget install app","winget search name","choco install app","scoop install app"]},
+  {lin:"systemctl",win:"sc / net",tip:"<code>sc</code> manages Windows services. <code>net start/stop</code> are simpler commands.",sugg:["sc start servicename","sc stop servicename","net start servicename","Get-Service (PS)"]},
+  {lin:"du",win:"dir /s",tip:"<code>dir /s</code> shows total sizes. Use TreeSize or WinDirStat for a visual breakdown.",sugg:["dir /s","Get-ChildItem -Recurse | Measure-Object -Property Length (PS)","TreeSize (GUI)","forfiles /s /c 'cmd /c echo @fsize'"]},
+  {lin:"uname",win:"systeminfo",tip:"<code>systeminfo</code> shows OS version and hardware info. <code>winver</code> shows a GUI dialog.",sugg:["systeminfo","winver","Get-ComputerInfo (PS)","wmic os get Caption"]},
+];
+
+const exSets={
+  cmd:["dir","ipconfig","tasklist","ping","del","shutdown","find","whoami","sc","netstat","taskmgr","sort"],
+  ps:["Get-ChildItem","Get-Process","Invoke-WebRequest","Select-String","Get-Service","Sort-Object","Test-Path","Get-Date","Compress-Archive","Get-Help"],
+  rev:["ls","grep","ps aux","kill","ssh","curl","diff","chmod","man","cron","sudo","apt"],
+};
+
+let mode='cmd';
+
+function getDb(){return mode==='cmd'?cmdDb:mode==='ps'?psDb:revDb;}
+function normalize(s){return s.trim().toLowerCase().replace(/\s+/g,' ');}
+
+function findMatch(val){
+  if(!val.trim())return null;
+  const n=normalize(val);
+  const db=getDb();
+  const key=mode==='rev'?'lin':'win';
+  let m=db.find(e=>normalize(e[key])===n);
+  if(m)return m;
+  return db.find(e=>n.startsWith(normalize(e[key]))||normalize(e[key]).startsWith(n))||null;
+}
+
+function convert(val){
+  const out=document.getElementById('output');
+  const tip=document.getElementById('tip');
+  const sg=document.getElementById('suggestions');
+  const ss=document.getElementById('sugg-section');
+  if(!val.trim()){
+    out.textContent='Start typing above...';
+    out.className='output-text';
+    tip.innerHTML='Type any command to see tips and notes.';
+    ss.style.display='none';
+    return;
+  }
+  const m=findMatch(val);
+  const outKey=mode==='rev'?'win':'lin';
+  if(m){
+    out.textContent=m[outKey];
+    out.className='output-text found';
+    tip.innerHTML=m.tip;
+    sg.innerHTML=m.sugg.map(s=>`<div class="sugg-card" onclick="useChip('${s.replace(/'/g,"\\'").replace(/\\/g,'\\\\')}')">${s}</div>`).join('');
+    ss.style.display='block';
+  }else{
+    out.textContent='No built-in match found';
+    out.className='output-text';
+    tip.innerHTML=`No mapping for <code>${val}</code>. Try a shorter keyword, or ask Claude via the button below.`;
+    sg.innerHTML=`<div style="grid-column:1/-1"><button class="ask-btn" onclick="window.open('https://claude.ai','_blank')">Ask Claude to convert this ↗</button></div>`;
+    ss.style.display='block';
+  }
+}
+
+function useChip(raw){
+  const clean=raw.replace(/\s*\(.*?\)/g,'').trim();
+  document.getElementById('cmd').value=clean;
+  convert(clean);
+}
+
+function copyResult(){
+  const text=document.getElementById('output').textContent;
+  const btn=document.getElementById('copy-btn');
+  if(text&&!text.startsWith('Start')&&!text.startsWith('No')){
+    navigator.clipboard.writeText(text).catch(()=>{});
+    btn.textContent='copied!';
+    btn.classList.add('copied');
+    setTimeout(()=>{btn.textContent='copy';btn.classList.remove('copied');},1500);
+  }
+}
+
+function setMode(m){
+  mode=m;
+  ['cmd','ps','rev'].forEach(t=>{
+    const el=document.getElementById('tab-'+t);
+    el.className='tab '+t+(t===m?' active':'');
+  });
+  const prompt=document.getElementById('prompt');
+  const badges=document.getElementById('badges');
+  const outLabel=document.getElementById('out-label');
+  const input=document.getElementById('cmd');
+  prompt.className='prompt '+m;
+  if(m==='cmd'){
+    prompt.textContent='C:\\>';
+    badges.innerHTML='<span class="badge win">Windows CMD</span><span class="badge arr">→</span><span class="badge lin">Linux / Bash</span>';
+    input.placeholder='e.g. dir /s  or  tasklist';
+    outLabel.textContent='Linux equivalent';
+  }else if(m==='ps'){
+    prompt.textContent='PS>';
+    badges.innerHTML='<span class="badge ps-b">PowerShell</span><span class="badge arr">→</span><span class="badge lin">Linux / Bash</span>';
+    input.placeholder='e.g. Get-ChildItem  or  Invoke-WebRequest';
+    outLabel.textContent='Bash equivalent';
+  }else{
+    prompt.textContent='$';
+    badges.innerHTML='<span class="badge lin">Linux / Bash</span><span class="badge arr">→</span><span class="badge win">Windows</span>';
+    input.placeholder='e.g. ls -la  or  grep  or  chmod';
+    outLabel.textContent='Windows equivalent';
+  }
+  input.value='';
+  document.getElementById('output').textContent='Start typing above...';
+  document.getElementById('output').className='output-text';
+  document.getElementById('tip').innerHTML='Type any command to see tips and notes.';
+  document.getElementById('sugg-section').style.display='none';
+  renderChips();
+  input.focus();
+}
+
+function renderChips(){
+  const el=document.getElementById('chips');
+  el.innerHTML='';
+  exSets[mode].forEach(e=>{
+    const c=document.createElement('span');
+    c.className='chip';
+    c.textContent=e;
+    c.onclick=()=>{
+      document.getElementById('cmd').value=e;
+      convert(e);
+      el.querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+    };
+    el.appendChild(c);
+  });
+}
+
+renderChips();
+document.getElementById('cmd').focus();
+</script>
+</body>
+</html>
